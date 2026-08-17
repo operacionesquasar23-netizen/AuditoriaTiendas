@@ -14,8 +14,6 @@ import {
 } from "@/lib/utils/reporte";
 import type { Catalogo } from "@/lib/supabase/types";
 
-const PIN_REPORTES = "Quasar2026";
-
 export default function ReportesPage() {
   const [desbloqueado, setDesbloqueado] = useState(false);
 
@@ -23,7 +21,7 @@ export default function ReportesPage() {
     return (
       <PinGate
         onDesbloqueado={() => setDesbloqueado(true)}
-        pinEsperado={PIN_REPORTES}
+        modulo="reportes"
         titulo="Reportes"
         subtitulo="Auditoría de Tienda"
       />

@@ -31,7 +31,7 @@ export default function AdminPage() {
   const [estado, setEstado] = useState<EstadoCarga>({ paso: "esperando_archivo" });
 
   if (!desbloqueado) {
-    return <PinGate onDesbloqueado={() => setDesbloqueado(true)} />;
+    return <PinGate onDesbloqueado={() => setDesbloqueado(true)} modulo="admin" />;
   }
 
   async function manejarArchivo(e: ChangeEvent<HTMLInputElement>) {

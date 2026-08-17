@@ -5,33 +5,42 @@ import { LogoHeader } from "@/components/LogoHeader";
 
 interface PinGateProps {
   onDesbloqueado: () => void;
-  pinEsperado?: string;
+  modulo: "admin" | "reportes";
   titulo?: string;
   subtitulo?: string;
 }
 
-// El PIN por defecto (panel admin) vive en una variable de entorno.
-// Otros módulos (ej. Reportes) pueden pasar su propio pinEsperado por prop.
-const PIN_ADMIN_ENV = process.env.NEXT_PUBLIC_ADMIN_PIN ?? "";
-
 export function PinGate({
   onDesbloqueado,
-  pinEsperado,
+  modulo,
   titulo = "Panel Admin",
   subtitulo = "Auditoría de Tienda",
 }: PinGateProps) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
-  const pinCorrecto = pinEsperado ?? PIN_ADMIN_ENV;
+  const [verificando, setVerificando] = useState(false);
 
-  function manejarSubmit(e: FormEvent) {
+  async function manejarSubmit(e: FormEvent) {
     e.preventDefault();
-    if (pin === pinCorrecto && pinCorrecto.length > 0) {
-      setError(false);
-      onDesbloqueado();
-    } else {
+    setVerificando(true);
+    setError(false);
+    try {
+      const res = await fetch("/api/verify-pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modulo, pin }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        onDesbloqueado();
+      } else {
+        setError(true);
+        setPin("");
+      }
+    } catch {
       setError(true);
-      setPin("");
+    } finally {
+      setVerificando(false);
     }
   }
 
@@ -46,28 +55,30 @@ export function PinGate({
           <label htmlFor="pin" className="block text-sm font-medium text-gray-700 mb-2">
             PIN de acceso
           </label>
-        <input
-          id="pin"
-          type="password"
-          inputMode="numeric"
-          value={pin}
-          onChange={(e) => setPin(e.target.value)}
-          autoFocus
-          className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-center text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-gray-900"
-        />
+          <input
+            id="pin"
+            type="password"
+            inputMode="numeric"
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            autoFocus
+            disabled={verificando}
+            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-center text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-gray-900 disabled:opacity-50"
+          />
 
-        {error && (
-          <p className="text-sm text-red-600 mt-2 text-center">
-            PIN incorrecto, intenta de nuevo.
-          </p>
-        )}
+          {error && (
+            <p className="text-sm text-red-600 mt-2 text-center">
+              PIN incorrecto, intenta de nuevo.
+            </p>
+          )}
 
-        <button
-          type="submit"
-          className="w-full mt-6 bg-gray-900 text-white rounded-lg py-2.5 font-medium hover:bg-gray-800 transition-colors"
-        >
-          Entrar
-        </button>
+          <button
+            type="submit"
+            disabled={verificando}
+            className="w-full mt-6 bg-gray-900 text-white rounded-lg py-2.5 font-medium hover:bg-gray-800 transition-colors disabled:opacity-50"
+          >
+            {verificando ? "Verificando…" : "Entrar"}
+          </button>
         </form>
       </div>
     </main>
