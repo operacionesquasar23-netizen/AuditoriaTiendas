@@ -59,10 +59,26 @@ export function ChecklistAuditoria({
   const [error, setError] = useState<string | null>(null);
 
   function manejarFotos(e: ChangeEvent<HTMLInputElement>) {
-    const archivos = Array.from(e.target.files ?? []).slice(0, MAX_FOTOS);
-    if (archivos.length === 0) return;
-    setFotos(archivos);
-    setPreviewsFoto(archivos.map((archivo) => URL.createObjectURL(archivo)));
+    const nuevosArchivos = Array.from(e.target.files ?? []);
+    if (nuevosArchivos.length === 0) return;
+
+    setFotos((prev) => [...prev, ...nuevosArchivos].slice(0, MAX_FOTOS));
+    setPreviewsFoto((prev) =>
+      [...prev, ...nuevosArchivos.map((archivo) => URL.createObjectURL(archivo))].slice(
+        0,
+        MAX_FOTOS
+      )
+    );
+
+    // Sin esto, seleccionar el mismo archivo dos veces seguidas (ej. abrir
+    // la cámara, tomar foto, volver a abrir la cámara) no dispara onChange
+    // de nuevo porque el input "recuerda" el valor anterior.
+    e.target.value = "";
+  }
+
+  function quitarFoto(indice: number) {
+    setFotos((prev) => prev.filter((_, i) => i !== indice));
+    setPreviewsFoto((prev) => prev.filter((_, i) => i !== indice));
   }
 
   async function manejarSubmit(e: FormEvent) {
@@ -220,15 +236,28 @@ export function ChecklistAuditoria({
         {previewsFoto.length > 0 && (
           <div className="mt-3 grid grid-cols-3 gap-2">
             {previewsFoto.map((preview, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={i}
-                src={preview}
-                alt={`Vista previa ${i + 1}`}
-                className="w-full h-24 object-cover rounded-lg border border-gray-200"
-              />
+              <div key={i} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={preview}
+                  alt={`Vista previa ${i + 1}`}
+                  className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => quitarFoto(i)}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center bg-gray-900 text-white text-xs rounded-full"
+                >
+                  ×
+                </button>
+              </div>
             ))}
           </div>
+        )}
+        {previewsFoto.length < MAX_FOTOS && (
+          <p className="text-xs text-gray-400 mt-2">
+            {previewsFoto.length}/{MAX_FOTOS} fotos agregadas
+          </p>
         )}
       </div>
 
