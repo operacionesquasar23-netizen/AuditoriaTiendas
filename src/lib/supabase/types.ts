@@ -43,6 +43,8 @@ export interface ElementoCatalogo {
   foto_instalacion: string | null;
   es_vencido: boolean;
   submotivo_desinstalacion: string | null;
+  es_no_instalado: boolean;
+  submotivo_no_instalado: string | null;
 }
 
 export interface Auditoria {

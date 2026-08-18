@@ -157,6 +157,19 @@ export function ChecklistAuditoria({
         </p>
       )}
 
+      {elemento.es_no_instalado && (
+        <p className="text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5">
+          Esta campaña está vigente pero el elemento figura como no instalado.
+          {elemento.submotivo_no_instalado && (
+            <>
+              {" "}
+              Motivo registrado: <strong>{elemento.submotivo_no_instalado}</strong>.
+            </>
+          )}{" "}
+          Verifica en tienda y completa el checklist normal.
+        </p>
+      )}
+
       {elemento.foto_instalacion && (
         <div>
           <p className="text-sm font-medium text-gray-700 mb-2">

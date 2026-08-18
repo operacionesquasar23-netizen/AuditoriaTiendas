@@ -61,10 +61,8 @@ export default function AdminPage() {
             `${resultado.filasDescartadasSubmotivoExcluido} ya no están en tienda (submotivo excluido)`
           );
         }
-        if (resultado.filasDescartadasNoInstalado > 0) {
-          detalles.push(
-            `${resultado.filasDescartadasNoInstalado} no tienen STATUS INSTALACION = Instalado`
-          );
+        if (resultado.filasDescartadasVencidoNoInstalado > 0) {
+          detalles.push(`${resultado.filasDescartadasVencidoNoInstalado} vencidas y nunca instaladas a la vez`);
         }
         if (resultado.filasDescartadasSinTienda > 0) {
           detalles.push(`${resultado.filasDescartadasSinTienda} sin tienda`);
@@ -255,10 +253,22 @@ export default function AdminPage() {
                   descartada(s) por estar desinstaladas.
                 </p>
               )}
-              {estado.resultado.filasDescartadasNoInstalado > 0 && (
+              {estado.resultado.filasDescartadasVencidoNoInstalado > 0 && (
                 <p className="text-gray-500">
-                  {estado.resultado.filasDescartadasNoInstalado} fila(s)
-                  descartada(s) por no tener STATUS INSTALACION = Instalado.
+                  {estado.resultado.filasDescartadasVencidoNoInstalado} fila(s)
+                  descartada(s) por estar vencidas y nunca instaladas a la vez.
+                </p>
+              )}
+              {estado.resultado.totalElementosVencidos > 0 && (
+                <p>
+                  <span className="font-medium">De esos, vencidos (Vigencia = Vencido, pendientes de desinstalar):</span>{" "}
+                  {estado.resultado.totalElementosVencidos.toLocaleString("es-PE")}
+                </p>
+              )}
+              {estado.resultado.totalElementosNoInstalados > 0 && (
+                <p>
+                  <span className="font-medium">De esos, no instalados (IN 2 vacío, vigentes):</span>{" "}
+                  {estado.resultado.totalElementosNoInstalados.toLocaleString("es-PE")}
                 </p>
               )}
               {estado.resultado.filasDescartadasSubmotivoExcluido > 0 && (

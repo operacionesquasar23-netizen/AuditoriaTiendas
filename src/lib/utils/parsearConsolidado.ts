@@ -35,6 +35,12 @@ export interface ElementoParseado {
   // simplificado (solo foto + observaciones, sin checklist de estado).
   es_vencido: boolean;
   submotivo_desinstalacion: string | null;
+  // No instalado = la campaña está vigente pero IN 2 sigue vacío (nunca se
+  // instaló en tienda). A diferencia de "vencido", SÍ usa el checklist
+  // completo (el auditor confirma si lo encontró o sigue sin instalar),
+  // solo se le agrega el motivo como aviso informativo.
+  es_no_instalado: boolean;
+  submotivo_no_instalado: string | null;
 }
 
 export interface ResultadoParseo {
@@ -42,12 +48,13 @@ export interface ResultadoParseo {
   totalFilasExcel: number;
   totalFilasInstalado: number;
   totalElementosVencidos: number;
+  totalElementosNoInstalados: number;
   filasDescartadasSinTienda: number;
   filasDescartadasFueraDeLima: number;
   filasDescartadasCadenaNoPermitida: number;
   filasDescartadasDesinstaladas: number;
   filasDescartadasSubmotivoExcluido: number;
-  filasDescartadasNoInstalado: number;
+  filasDescartadasVencidoNoInstalado: number;
   valoresRegionEncontrados: string[];
   valoresCadenaEncontrados: string[];
   valoresVigenciaEncontrados: string[];
@@ -115,10 +122,17 @@ function crearLector(encabezadosReales: string[]) {
  * Lee un archivo Excel (Consolidado de Quasar Report) y devuelve las filas
  * que deben auditarse: Lima, cadena permitida, no desinstalado (OUT 2
  * vacío) y sin un submotivo de inventario que indique que ya no está en
- * tienda. La condición de base ya NO es "STATUS INSTALACION = Instalado":
- * también entran elementos vencidos (otro estado) que siguen físicamente
- * en tienda a la espera de desinstalación — esos quedan marcados con
- * es_vencido = true para que el checklist del auditor sea simplificado.
+ * tienda. Ya NO se filtra por "STATUS INSTALACION = Instalado": entran
+ * tanto elementos instalados como no instalados (IN 2 vacío), siempre que
+ * la campaña siga vigente y el elemento no haya sido desinstalado.
+ *
+ * Se marcan dos flujos especiales, mutuamente excluyentes:
+ * - es_vencido: la campaña venció pero el elemento sigue en tienda,
+ *   pendiente de desinstalar (checklist simplificado).
+ * - es_no_instalado: la campaña está vigente pero nunca se instaló en
+ *   tienda (checklist completo + aviso informativo con el motivo).
+ * Un elemento vencido Y no instalado a la vez se descarta por completo
+ * (no debería auditarse en ninguno de los dos flujos).
  *
  * Todo el parseo ocurre en el navegador (SheetJS) — el archivo nunca se
  * sube a un servidor intermedio, solo el resultado ya filtrado se inserta
@@ -152,7 +166,7 @@ export async function parsearConsolidado(
   let filasDescartadasCadenaNoPermitida = 0;
   let filasDescartadasDesinstaladas = 0;
   let filasDescartadasSubmotivoExcluido = 0;
-  let filasDescartadasNoInstalado = 0;
+  let filasDescartadasVencidoNoInstalado = 0;
 
   // Solo informativo para el preview.
   const totalFilasInstalado = filas.filter(
@@ -209,23 +223,27 @@ export async function parsearConsolidado(
       continue;
     }
 
-    // STATUS INSTALACION = Instalado es obligatorio: si no está instalado,
-    // no está físicamente en tienda (independiente de OUT 2).
-    const esInstalado =
-      normalizar(leer(fila, "STATUS INSTALACION") ?? "") === "INSTALADO";
-    if (!esInstalado) {
-      filasDescartadasNoInstalado++;
-      continue;
-    }
-
     // Vencido = la columna Vigencia indica que venció (ej. "Vencido",
-    // "Vencida"), pero el elemento sigue en tienda (Instalado, OUT 2
-    // vacío). El Submotivo Ult Inciden Desinstal es solo informativo: el
-    // motivo por el que todavía no se ha desinstalado.
+    // "Vencida"), pero el elemento sigue en tienda (OUT 2 vacío). El
+    // Submotivo Ult Inciden Desinstal es solo informativo: el motivo por
+    // el que todavía no se ha desinstalado.
     const vigencia = leer(fila, "Vigencia");
     const esVencido = normalizar(vigencia ?? "").includes("VENC");
     const submotivoDesinstalacion = leer(fila, "Submotivo Ult Inciden Desinstal");
     if (vigencia) valoresVigencia.add(vigencia);
+
+    // No instalado = IN 2 vacío: el elemento nunca se instaló en tienda,
+    // independiente de lo que diga STATUS INSTALACION.
+    const in2 = leer(fila, "IN 2");
+    const esNoInstalado = !in2;
+    const submotivoNoInstalado = leer(fila, "Submotivo Inciden Instal");
+
+    // Un elemento vencido Y nunca instalado a la vez es un caso que no
+    // debe auditarse en ninguno de los dos flujos: se descarta.
+    if (esVencido && esNoInstalado) {
+      filasDescartadasVencidoNoInstalado++;
+      continue;
+    }
 
     elementos.push({
       tienda,
@@ -244,6 +262,8 @@ export async function parsearConsolidado(
       foto_instalacion: primeraUrl(leer(fila, "FOTO INSTALACIÓN")),
       es_vencido: esVencido,
       submotivo_desinstalacion: submotivoDesinstalacion,
+      es_no_instalado: esNoInstalado,
+      submotivo_no_instalado: esNoInstalado ? submotivoNoInstalado : null,
     });
   }
 
@@ -252,12 +272,13 @@ export async function parsearConsolidado(
     totalFilasExcel: filas.length,
     totalFilasInstalado,
     totalElementosVencidos: elementos.filter((e) => e.es_vencido).length,
+    totalElementosNoInstalados: elementos.filter((e) => e.es_no_instalado).length,
     filasDescartadasSinTienda,
     filasDescartadasFueraDeLima,
     filasDescartadasCadenaNoPermitida,
     filasDescartadasDesinstaladas,
     filasDescartadasSubmotivoExcluido,
-    filasDescartadasNoInstalado,
+    filasDescartadasVencidoNoInstalado,
     valoresRegionEncontrados: Array.from(valoresRegion).slice(0, 15),
     valoresCadenaEncontrados: Array.from(valoresCadena).slice(0, 15),
     valoresVigenciaEncontrados: Array.from(valoresVigencia).slice(0, 15),

@@ -412,12 +412,16 @@ function VistaElementos({
   // encontró en tienda pero no venían en el catálogo) también van
   // aparte, y solo en la pestaña Auditados, ya que siempre nacen
   // completos (no existe una versión "pendiente" de ellos).
-  const normales = listaActual.filter((el) => !el.es_vencido);
+  const normales = listaActual.filter((el) => !el.es_vencido && !el.es_no_instalado);
   const vencidos = listaActual.filter((el) => el.es_vencido);
+  const noInstalados = listaActual.filter((el) => el.es_no_instalado);
   const gruposActuales = [
     ...agruparPorClasificacion(normales),
     ...(vencidos.length > 0
       ? [{ clasificacion: "Vencidos sin desinstalar", elementos: vencidos }]
+      : []),
+    ...(noInstalados.length > 0
+      ? [{ clasificacion: "No instalados", elementos: noInstalados }]
       : []),
   ];
 
@@ -527,6 +531,11 @@ function VistaElementos({
                         {elemento.es_vencido && (
                           <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 rounded px-1.5 py-0.5">
                             VENCIDO
+                          </span>
+                        )}
+                        {elemento.es_no_instalado && (
+                          <span className="text-[10px] font-semibold text-blue-700 bg-blue-100 rounded px-1.5 py-0.5">
+                            NO INSTALADO
                           </span>
                         )}
                       </p>
