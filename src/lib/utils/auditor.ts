@@ -194,3 +194,26 @@ export async function registrarAuditoria(datos: DatosAuditoria): Promise<void> {
     throw new Error(`No se pudo registrar la auditoría: ${error.message}`);
   }
 }
+
+export interface StaffTienda {
+  operador: string | null;
+}
+
+/** Operador (Instalador/Desinstalador/Relevamiento) asignado a una tienda. */
+export async function obtenerOperadorTienda(
+  cadena: string,
+  tienda: string
+): Promise<StaffTienda | null> {
+  const { data, error } = await supabase
+    .from("staff_tienda")
+    .select("operador")
+    .eq("cadena", cadena)
+    .eq("tienda", tienda)
+    .maybeSingle<StaffTienda>();
+
+  if (error) {
+    throw new Error(`No se pudo obtener el operador de la tienda: ${error.message}`);
+  }
+
+  return data;
+}

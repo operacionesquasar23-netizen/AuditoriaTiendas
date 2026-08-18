@@ -6,6 +6,7 @@ import { LogoHeader } from "@/components/LogoHeader";
 import {
   obtenerCatalogoActivo,
   obtenerElementosTienda,
+  obtenerOperadorTienda,
   obtenerTiendas,
   type ElementoConEstado,
 } from "@/lib/utils/auditor";
@@ -24,6 +25,7 @@ type Paso =
       catalogoId: string;
       tienda: string;
       elementos: ElementoConEstado[];
+      operador: string | null;
     }
   | {
       vista: "checklist";
@@ -31,6 +33,7 @@ type Paso =
       tienda: string;
       elementos: ElementoConEstado[];
       elementoSeleccionado: ElementoConEstado;
+      operador: string | null;
     };
 
 export default function AuditorPage() {
@@ -75,8 +78,16 @@ export default function AuditorPage() {
     setError(null);
     try {
       const elementos = await obtenerElementosTienda(catalogoId, tienda);
+      const cadena = elementos[0]?.cadena || "";
+      const staff = cadena ? await obtenerOperadorTienda(cadena, tienda) : null;
       setTab("pendientes");
-      setPaso({ vista: "elementos", catalogoId, tienda, elementos });
+      setPaso({
+        vista: "elementos",
+        catalogoId,
+        tienda,
+        elementos,
+        operador: staff?.operador ?? null,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ocurrió un error.");
     } finally {
@@ -86,9 +97,9 @@ export default function AuditorPage() {
 
   async function recargarElementos() {
     if (paso.vista !== "elementos" && paso.vista !== "checklist") return;
-    const { catalogoId, tienda } = paso;
+    const { catalogoId, tienda, operador } = paso;
     const elementos = await obtenerElementosTienda(catalogoId, tienda);
-    setPaso({ vista: "elementos", catalogoId, tienda, elementos });
+    setPaso({ vista: "elementos", catalogoId, tienda, elementos, operador });
   }
 
   const tiendasFiltradas = useMemo(() => {
@@ -129,6 +140,7 @@ export default function AuditorPage() {
         {paso.vista === "elementos" && (
           <VistaElementos
             tienda={paso.tienda}
+            operador={paso.operador}
             catalogoId={paso.catalogoId}
             elementos={paso.elementos}
             tab={tab}
@@ -159,6 +171,7 @@ export default function AuditorPage() {
                 catalogoId: paso.catalogoId,
                 tienda: paso.tienda,
                 elementos: paso.elementos,
+                operador: paso.operador,
               })
             }
           />
@@ -286,6 +299,7 @@ function VistaTienda({
 
 function VistaElementos({
   tienda,
+  operador,
   catalogoId,
   elementos,
   tab,
@@ -294,6 +308,7 @@ function VistaElementos({
   onCambiarTienda,
 }: {
   tienda: string;
+  operador: string | null;
   catalogoId: string;
   elementos: ElementoConEstado[];
   tab: "pendientes" | "auditados";
@@ -351,6 +366,9 @@ function VistaElementos({
           Cambiar tienda
         </button>
       </div>
+      {operador && (
+        <p className="text-xs text-gray-500 mb-1">Operador: {operador}</p>
+      )}
       <p className="text-xs text-gray-400 mb-3">
         {elementos.length} elemento(s) en total
       </p>
