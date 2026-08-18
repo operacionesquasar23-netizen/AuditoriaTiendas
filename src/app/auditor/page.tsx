@@ -73,27 +73,26 @@ export default function AuditorPage() {
     }
   }
 
-  async function seleccionarTienda(tienda: string, catalogoId: string) {
-    setCargando(true);
-    setError(null);
-    try {
-      const elementos = await obtenerElementosTienda(catalogoId, tienda);
-      const cadena = elementos[0]?.cadena || "";
-      const staff = cadena ? await obtenerOperadorTienda(cadena, tienda) : null;
-      setTab("pendientes");
-      setPaso({
-        vista: "elementos",
-        catalogoId,
-        tienda,
-        elementos,
-        operador: staff?.operador ?? null,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Ocurrió un error.");
-    } finally {
-      setCargando(false);
+    async function seleccionarTienda(tienda: string, catalogoId: string) {
+      setCargando(true);
+      setError(null);
+      try {
+        const elementos = await obtenerElementosTienda(catalogoId, tienda);
+        const staff = await obtenerOperadorTienda(tienda);
+        setTab("pendientes");
+        setPaso({
+          vista: "elementos",
+          catalogoId,
+          tienda,
+          elementos,
+          operador: staff?.operador ?? null,
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Ocurrió un error.");
+      } finally {
+        setCargando(false);
+      }
     }
-  }
 
   async function recargarElementos() {
     if (paso.vista !== "elementos" && paso.vista !== "checklist") return;

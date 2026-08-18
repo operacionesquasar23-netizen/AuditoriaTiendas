@@ -201,13 +201,11 @@ export interface StaffTienda {
 
 /** Operador (Instalador/Desinstalador/Relevamiento) asignado a una tienda. */
 export async function obtenerOperadorTienda(
-  cadena: string,
   tienda: string
 ): Promise<StaffTienda | null> {
   const { data, error } = await supabase
     .from("staff_tienda")
     .select("operador")
-    .eq("cadena", cadena)
     .eq("tienda", tienda)
     .maybeSingle<StaffTienda>();
 
