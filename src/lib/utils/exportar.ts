@@ -18,6 +18,8 @@ interface FilaExport {
   Auditor: string;
   Fecha: string;
   Foto: string;
+  "Foto 2": string;
+  "Foto 3": string;
 }
 
 function construirFila(
@@ -40,6 +42,8 @@ function construirFila(
       ? new Date(auditoria.fecha_auditoria).toLocaleString("es-PE")
       : "",
     Foto: auditoria?.foto_url ?? "",
+    "Foto 2": auditoria?.foto_url_2 ?? "",
+    "Foto 3": auditoria?.foto_url_3 ?? "",
   };
 }
 
@@ -58,20 +62,30 @@ function descargarExcel(filas: FilaExport[], nombreArchivo: string) {
     { wch: 30 }, // Observaciones
     { wch: 18 }, // Auditor
     { wch: 18 }, // Fecha
-    { wch: 22 }, // Foto
+    { wch: 12 }, // Foto
+    { wch: 12 }, // Foto 2
+    { wch: 12 }, // Foto 3
   ];
 
-  // Columna "Foto" (13ra, índice 12 = M): convertir la URL de texto plano
-  // en un hyperlink real y cliqueable, con "Ver foto" como texto visible.
-  const COLUMNA_FOTO = 12;
+  // Columnas de fotos: convertir la URL de texto plano en un hyperlink
+  // real y cliqueable, con "Ver foto" como texto visible.
+  const columnasFoto = [
+    { indice: 12, campo: "Foto" as const },
+    { indice: 13, campo: "Foto 2" as const },
+    { indice: 14, campo: "Foto 3" as const },
+  ];
+
   filas.forEach((fila, i) => {
-    if (!fila.Foto) return;
-    const direccionCelda = XLSX.utils.encode_cell({ r: i + 1, c: COLUMNA_FOTO });
-    hoja[direccionCelda] = {
-      t: "s",
-      v: "Ver foto",
-      l: { Target: fila.Foto },
-    };
+    columnasFoto.forEach(({ indice, campo }) => {
+      const url = fila[campo];
+      if (!url) return;
+      const direccionCelda = XLSX.utils.encode_cell({ r: i + 1, c: indice });
+      hoja[direccionCelda] = {
+        t: "s",
+        v: "Ver foto",
+        l: { Target: url },
+      };
+    });
   });
 
   const libro = XLSX.utils.book_new();

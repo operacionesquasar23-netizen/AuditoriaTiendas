@@ -9,11 +9,12 @@ import {
 import { nombreElemento, subtituloElemento } from "@/lib/utils/formatoElemento";
 import type { EstadoActual, EstadoHook } from "@/lib/supabase/types";
 
+const MAX_FOTOS = 3;
+
 const OPCIONES_ESTADO_ACTUAL: EstadoActual[] = [
   "Instalado-OK",
   "Instalado-Dañado",
   "Faltante",
-  "Retirado",
   "Ubicación incorrecta",
   "Otro",
 ];
@@ -51,17 +52,17 @@ export function ChecklistAuditoria({
 
   const [estadoActual, setEstadoActual] = useState<EstadoActual | null>(null);
   const [estadoHook, setEstadoHook] = useState<EstadoHook | null>(null);
-  const [foto, setFoto] = useState<File | null>(null);
-  const [previewFoto, setPreviewFoto] = useState<string | null>(null);
+  const [fotos, setFotos] = useState<File[]>([]);
+  const [previewsFoto, setPreviewsFoto] = useState<string[]>([]);
   const [observaciones, setObservaciones] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function manejarFoto(e: ChangeEvent<HTMLInputElement>) {
-    const archivo = e.target.files?.[0];
-    if (!archivo) return;
-    setFoto(archivo);
-    setPreviewFoto(URL.createObjectURL(archivo));
+  function manejarFotos(e: ChangeEvent<HTMLInputElement>) {
+    const archivos = Array.from(e.target.files ?? []).slice(0, MAX_FOTOS);
+    if (archivos.length === 0) return;
+    setFotos(archivos);
+    setPreviewsFoto(archivos.map((archivo) => URL.createObjectURL(archivo)));
   }
 
   async function manejarSubmit(e: FormEvent) {
@@ -79,9 +80,9 @@ export function ChecklistAuditoria({
 
     setGuardando(true);
     try {
-      let fotoUrl: string | null = null;
-      if (foto) {
-        fotoUrl = await subirFotoAuditoria(foto, tienda, elemento.id);
+      const fotoUrls: (string | null)[] = [null, null, null];
+      for (let i = 0; i < fotos.length; i++) {
+        fotoUrls[i] = await subirFotoAuditoria(fotos[i], tienda, elemento.id, i + 1);
       }
 
       await registrarAuditoria({
@@ -90,7 +91,7 @@ export function ChecklistAuditoria({
         estadoActual: estadoActualFinal,
         estadoHook: estadoHookFinal,
         observaciones,
-        fotoUrl,
+        fotoUrls,
         auditorNombre,
       });
 
@@ -207,22 +208,27 @@ export function ChecklistAuditoria({
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          {esVencido ? "1." : "3."} Foto del elemento
+          {esVencido ? "1." : "3."} Foto(s) del elemento (máximo {MAX_FOTOS})
         </label>
         <input
           type="file"
           accept="image/*"
-          capture="environment"
-          onChange={manejarFoto}
+          multiple
+          onChange={manejarFotos}
           className="w-full border border-gray-300 rounded-lg px-4 py-2.5"
         />
-        {previewFoto && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={previewFoto}
-            alt="Vista previa"
-            className="mt-3 w-full max-h-64 object-cover rounded-lg border border-gray-200"
-          />
+        {previewsFoto.length > 0 && (
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {previewsFoto.map((preview, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={i}
+                src={preview}
+                alt={`Vista previa ${i + 1}`}
+                className="w-full h-24 object-cover rounded-lg border border-gray-200"
+              />
+            ))}
+          </div>
         )}
       </div>
 

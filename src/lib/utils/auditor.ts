@@ -151,10 +151,11 @@ export async function obtenerElementosTienda(
 export async function subirFotoAuditoria(
   file: File,
   tienda: string,
-  elementoId: string
+  elementoId: string,
+  indice: number = 1
 ): Promise<string> {
   const extension = file.name.split(".").pop() || "jpg";
-  const ruta = `${tienda.replace(/[^a-zA-Z0-9-_]/g, "_")}/${elementoId}-${Date.now()}.${extension}`;
+  const ruta = `${tienda.replace(/[^a-zA-Z0-9-_]/g, "_")}/${elementoId}-${indice}-${Date.now()}.${extension}`;
 
   const { error } = await supabase.storage
     .from("auditoria-fotos")
@@ -174,11 +175,10 @@ export interface DatosAuditoria {
   estadoActual: EstadoActual;
   estadoHook: EstadoHook;
   observaciones: string;
-  fotoUrl: string | null;
+  fotoUrls: (string | null)[]; // hasta 3
   auditorNombre: string;
 }
 
-/** Inserta una nueva fila de auditoría (append-only, nunca sobrescribe). */
 export async function registrarAuditoria(datos: DatosAuditoria): Promise<void> {
   const { error } = await supabase.from("auditorias").insert({
     elemento_id: datos.elementoId,
@@ -186,7 +186,9 @@ export async function registrarAuditoria(datos: DatosAuditoria): Promise<void> {
     estado_actual: datos.estadoActual,
     estado_hook: datos.estadoHook,
     observaciones: datos.observaciones || null,
-    foto_url: datos.fotoUrl,
+    foto_url: datos.fotoUrls[0] ?? null,
+    foto_url_2: datos.fotoUrls[1] ?? null,
+    foto_url_3: datos.fotoUrls[2] ?? null,
     auditor_nombre: datos.auditorNombre,
   });
 

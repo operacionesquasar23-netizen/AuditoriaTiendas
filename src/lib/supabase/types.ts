@@ -53,6 +53,8 @@ export interface Auditoria {
   estado_hook: EstadoHook;
   observaciones: string | null;
   foto_url: string | null;
+  foto_url_2: string | null;
+  foto_url_3: string | null;
   auditor_nombre: string | null;
   fecha_auditoria: string;
 }
