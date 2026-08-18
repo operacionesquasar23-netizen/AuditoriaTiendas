@@ -218,3 +218,53 @@ export async function obtenerOperadorTienda(
 
   return data;
 }
+
+export interface ElementoExtra {
+  id: string;
+  catalogo_id: string;
+  tienda: string;
+  nombre: string;
+  foto_url: string | null;
+  observaciones: string | null;
+  auditor_nombre: string | null;
+  fecha: string;
+}
+
+export async function obtenerElementosExtra(
+  catalogoId: string,
+  tienda: string
+): Promise<ElementoExtra[]> {
+  const { data, error } = await supabase
+    .from("elementos_extra")
+    .select("*")
+    .eq("catalogo_id", catalogoId)
+    .eq("tienda", tienda)
+    .order("fecha", { ascending: false });
+
+  if (error) {
+    throw new Error(`No se pudo obtener los elementos no listados: ${error.message}`);
+  }
+  return data as ElementoExtra[];
+}
+
+export async function crearElementoExtra(datos: {
+  catalogoId: string;
+  tienda: string;
+  nombre: string;
+  fotoUrl: string | null;
+  observaciones: string;
+  auditorNombre: string;
+}): Promise<void> {
+  const { error } = await supabase.from("elementos_extra").insert({
+    catalogo_id: datos.catalogoId,
+    tienda: datos.tienda,
+    nombre: datos.nombre,
+    foto_url: datos.fotoUrl,
+    observaciones: datos.observaciones || null,
+    auditor_nombre: datos.auditorNombre,
+  });
+
+  if (error) {
+    throw new Error(`No se pudo registrar el elemento: ${error.message}`);
+  }
+}

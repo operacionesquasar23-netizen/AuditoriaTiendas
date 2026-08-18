@@ -2,13 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ChecklistAuditoria } from "@/components/ChecklistAuditoria";
+import { ElementoExtraForm } from "@/components/ElementoExtraForm";
 import { LogoHeader } from "@/components/LogoHeader";
 import {
   obtenerCatalogoActivo,
+  obtenerElementosExtra,
   obtenerElementosTienda,
   obtenerOperadorTienda,
   obtenerTiendas,
   type ElementoConEstado,
+  type ElementoExtra,
 } from "@/lib/utils/auditor";
 import {
   agruparPorClasificacion,
@@ -25,6 +28,7 @@ type Paso =
       catalogoId: string;
       tienda: string;
       elementos: ElementoConEstado[];
+      elementosExtra: ElementoExtra[];
       operador: string | null;
       supervisor: string | null;
     }
@@ -33,7 +37,17 @@ type Paso =
       catalogoId: string;
       tienda: string;
       elementos: ElementoConEstado[];
+      elementosExtra: ElementoExtra[];
       elementoSeleccionado: ElementoConEstado;
+      operador: string | null;
+      supervisor: string | null;
+    }
+  | {
+      vista: "elemento-extra";
+      catalogoId: string;
+      tienda: string;
+      elementos: ElementoConEstado[];
+      elementosExtra: ElementoExtra[];
       operador: string | null;
       supervisor: string | null;
     };
@@ -80,6 +94,7 @@ export default function AuditorPage() {
     setError(null);
     try {
       const elementos = await obtenerElementosTienda(catalogoId, tienda);
+      const elementosExtra = await obtenerElementosExtra(catalogoId, tienda);
       const staff = await obtenerOperadorTienda(tienda);
       setTab("pendientes");
       setPaso({
@@ -87,6 +102,7 @@ export default function AuditorPage() {
         catalogoId,
         tienda,
         elementos,
+        elementosExtra,
         operador: staff?.operador ?? null,
         supervisor: staff?.supervisor ?? null,
       });
@@ -98,10 +114,24 @@ export default function AuditorPage() {
   }
 
   async function recargarElementos() {
-    if (paso.vista !== "elementos" && paso.vista !== "checklist") return;
+    if (
+      paso.vista !== "elementos" &&
+      paso.vista !== "checklist" &&
+      paso.vista !== "elemento-extra"
+    )
+      return;
     const { catalogoId, tienda, operador, supervisor } = paso;
     const elementos = await obtenerElementosTienda(catalogoId, tienda);
-    setPaso({ vista: "elementos", catalogoId, tienda, elementos, operador, supervisor });
+    const elementosExtra = await obtenerElementosExtra(catalogoId, tienda);
+    setPaso({
+      vista: "elementos",
+      catalogoId,
+      tienda,
+      elementos,
+      elementosExtra,
+      operador,
+      supervisor,
+    });
   }
 
   const tiendasFiltradas = useMemo(() => {
@@ -146,11 +176,13 @@ export default function AuditorPage() {
             supervisor={paso.supervisor}
             catalogoId={paso.catalogoId}
             elementos={paso.elementos}
+            elementosExtra={paso.elementosExtra}
             tab={tab}
             setTab={setTab}
             onElegirElemento={(elemento) =>
               setPaso({ ...paso, vista: "checklist", elementoSeleccionado: elemento })
             }
+            onAgregarExtra={() => setPaso({ ...paso, vista: "elemento-extra" })}
             onCambiarTienda={() =>
               setPaso({
                 vista: "tienda",
@@ -174,6 +206,27 @@ export default function AuditorPage() {
                 catalogoId: paso.catalogoId,
                 tienda: paso.tienda,
                 elementos: paso.elementos,
+                elementosExtra: paso.elementosExtra,
+                operador: paso.operador,
+                supervisor: paso.supervisor,
+              })
+            }
+          />
+        )}
+
+        {paso.vista === "elemento-extra" && (
+          <ElementoExtraForm
+            catalogoId={paso.catalogoId}
+            tienda={paso.tienda}
+            auditorNombre={auditorNombre}
+            onGuardado={recargarElementos}
+            onCancelar={() =>
+              setPaso({
+                vista: "elementos",
+                catalogoId: paso.catalogoId,
+                tienda: paso.tienda,
+                elementos: paso.elementos,
+                elementosExtra: paso.elementosExtra,
                 operador: paso.operador,
                 supervisor: paso.supervisor,
               })
@@ -307,9 +360,11 @@ function VistaElementos({
   supervisor,
   catalogoId,
   elementos,
+  elementosExtra,
   tab,
   setTab,
   onElegirElemento,
+  onAgregarExtra,
   onCambiarTienda,
 }: {
   tienda: string;
@@ -317,9 +372,11 @@ function VistaElementos({
   supervisor: string | null;
   catalogoId: string;
   elementos: ElementoConEstado[];
+  elementosExtra: ElementoExtra[];
   tab: "pendientes" | "auditados";
   setTab: (v: "pendientes" | "auditados") => void;
   onElegirElemento: (elemento: ElementoConEstado) => void;
+  onAgregarExtra: () => void;
   onCambiarTienda: () => void;
 }) {
   const [gruposAbiertos, setGruposAbiertos] = useState<Set<string>>(new Set());
@@ -351,7 +408,10 @@ function VistaElementos({
   // El grupo de "instalados" se agrupa por clasificación exactamente igual
   // que antes (Livianos/Muebles/Revestimientos). Los vencidos sin
   // desinstalar son un grupo aparte, agregado al final, no mezclado dentro
-  // de esas clasificaciones.
+  // de esas clasificaciones. "No listados" (elementos que el auditor
+  // encontró en tienda pero no venían en el catálogo) también van
+  // aparte, y solo en la pestaña Auditados, ya que siempre nacen
+  // completos (no existe una versión "pendiente" de ellos).
   const normales = listaActual.filter((el) => !el.es_vencido);
   const vencidos = listaActual.filter((el) => el.es_vencido);
   const gruposActuales = [
@@ -401,6 +461,13 @@ function VistaElementos({
         </a>
       </div>
 
+      <button
+        onClick={onAgregarExtra}
+        className="w-full mb-4 text-sm font-medium text-gray-700 border border-dashed border-gray-300 rounded-lg py-2.5 hover:bg-gray-50 transition-colors"
+      >
+        + Agregar elemento no listado
+      </button>
+
       <div className="flex border border-gray-200 rounded-lg overflow-hidden mb-4">
         <button
           onClick={() => setTab("pendientes")}
@@ -420,12 +487,12 @@ function VistaElementos({
               : "bg-white text-gray-600 hover:bg-gray-50"
           }`}
         >
-          Auditados ({auditados.length})
+          Auditados ({auditados.length + elementosExtra.length})
         </button>
       </div>
 
       <div className="max-h-[28rem] overflow-y-auto border border-gray-200 rounded-lg">
-        {listaActual.length === 0 && (
+        {listaActual.length === 0 && elementosExtra.length === 0 && (
           <p className="text-sm text-gray-400 px-4 py-6 text-center">
             {tab === "pendientes"
               ? "No quedan elementos pendientes 🎉"
@@ -480,6 +547,39 @@ function VistaElementos({
             </div>
           );
         })}
+
+        {tab === "auditados" && elementosExtra.length > 0 && (
+          <div>
+            <button
+              onClick={() => toggleGrupo("No listados")}
+              className={`w-full flex items-center justify-between px-4 py-2 text-xs font-semibold text-gray-500 bg-gray-50 uppercase tracking-wide hover:bg-gray-100 transition-colors ${
+                gruposActuales.length > 0 ? "border-t border-gray-200" : ""
+              }`}
+            >
+              <span>No listados ({elementosExtra.length})</span>
+              <span>{gruposAbiertos.has("No listados") ? "▲" : "▼"}</span>
+            </button>
+            {gruposAbiertos.has("No listados") && (
+              <div className="divide-y divide-gray-100">
+                {elementosExtra.map((extra) => (
+                  <div key={extra.id} className="px-4 py-3">
+                    <p className="text-sm font-medium text-gray-800">
+                      {extra.nombre}
+                    </p>
+                    {extra.observaciones && (
+                      <p className="text-xs text-gray-500 italic mt-0.5">
+                        &ldquo;{extra.observaciones}&rdquo;
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Registrado por {extra.auditor_nombre || "—"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
