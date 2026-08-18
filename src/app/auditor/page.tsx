@@ -26,6 +26,7 @@ type Paso =
       tienda: string;
       elementos: ElementoConEstado[];
       operador: string | null;
+      supervisor: string | null;
     }
   | {
       vista: "checklist";
@@ -34,6 +35,7 @@ type Paso =
       elementos: ElementoConEstado[];
       elementoSeleccionado: ElementoConEstado;
       operador: string | null;
+      supervisor: string | null;
     };
 
 export default function AuditorPage() {
@@ -73,32 +75,33 @@ export default function AuditorPage() {
     }
   }
 
-    async function seleccionarTienda(tienda: string, catalogoId: string) {
-      setCargando(true);
-      setError(null);
-      try {
-        const elementos = await obtenerElementosTienda(catalogoId, tienda);
-        const staff = await obtenerOperadorTienda(tienda);
-        setTab("pendientes");
-        setPaso({
-          vista: "elementos",
-          catalogoId,
-          tienda,
-          elementos,
-          operador: staff?.operador ?? null,
-        });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Ocurrió un error.");
-      } finally {
-        setCargando(false);
-      }
+  async function seleccionarTienda(tienda: string, catalogoId: string) {
+    setCargando(true);
+    setError(null);
+    try {
+      const elementos = await obtenerElementosTienda(catalogoId, tienda);
+      const staff = await obtenerOperadorTienda(tienda);
+      setTab("pendientes");
+      setPaso({
+        vista: "elementos",
+        catalogoId,
+        tienda,
+        elementos,
+        operador: staff?.operador ?? null,
+        supervisor: staff?.supervisor ?? null,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ocurrió un error.");
+    } finally {
+      setCargando(false);
     }
+  }
 
   async function recargarElementos() {
     if (paso.vista !== "elementos" && paso.vista !== "checklist") return;
-    const { catalogoId, tienda, operador } = paso;
+    const { catalogoId, tienda, operador, supervisor } = paso;
     const elementos = await obtenerElementosTienda(catalogoId, tienda);
-    setPaso({ vista: "elementos", catalogoId, tienda, elementos, operador });
+    setPaso({ vista: "elementos", catalogoId, tienda, elementos, operador, supervisor });
   }
 
   const tiendasFiltradas = useMemo(() => {
@@ -140,6 +143,7 @@ export default function AuditorPage() {
           <VistaElementos
             tienda={paso.tienda}
             operador={paso.operador}
+            supervisor={paso.supervisor}
             catalogoId={paso.catalogoId}
             elementos={paso.elementos}
             tab={tab}
@@ -171,6 +175,7 @@ export default function AuditorPage() {
                 tienda: paso.tienda,
                 elementos: paso.elementos,
                 operador: paso.operador,
+                supervisor: paso.supervisor,
               })
             }
           />
@@ -299,6 +304,7 @@ function VistaTienda({
 function VistaElementos({
   tienda,
   operador,
+  supervisor,
   catalogoId,
   elementos,
   tab,
@@ -308,6 +314,7 @@ function VistaElementos({
 }: {
   tienda: string;
   operador: string | null;
+  supervisor: string | null;
   catalogoId: string;
   elementos: ElementoConEstado[];
   tab: "pendientes" | "auditados";
@@ -365,8 +372,12 @@ function VistaElementos({
           Cambiar tienda
         </button>
       </div>
-      {operador && (
-        <p className="text-xs text-gray-500 mb-1">Operador: {operador}</p>
+      {(operador || supervisor) && (
+        <p className="text-xs text-gray-500 mb-1">
+          {[operador && `Operador: ${operador}`, supervisor && `Supervisor: ${supervisor}`]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
       )}
       <p className="text-xs text-gray-400 mb-3">
         {elementos.length} elemento(s) en total

@@ -197,15 +197,16 @@ export async function registrarAuditoria(datos: DatosAuditoria): Promise<void> {
 
 export interface StaffTienda {
   operador: string | null;
+  supervisor: string | null;
 }
 
-/** Operador (Instalador/Desinstalador/Relevamiento) asignado a una tienda. */
+/** Operador y supervisor asignados a una tienda. */
 export async function obtenerOperadorTienda(
   tienda: string
 ): Promise<StaffTienda | null> {
   const { data, error } = await supabase
     .from("staff_tienda")
-    .select("operador")
+    .select("operador, supervisor")
     .eq("tienda", tienda)
     .maybeSingle<StaffTienda>();
 
