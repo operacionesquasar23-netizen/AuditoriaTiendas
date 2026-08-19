@@ -24,7 +24,7 @@ export interface MetricasDashboard {
   desgloseHooks: { estado: string; cantidad: number }[];
   totalVencidos: number;
   pctVencidos: number;
-  desgloseMotivosVencidos: { motivo: string; cantidad: number }[];
+  desgloseMotivosVencidos: { estado: string; cantidad: number }[];
 }
 
 /** Opciones disponibles para los selectores de filtro, según el catálogo activo. */
