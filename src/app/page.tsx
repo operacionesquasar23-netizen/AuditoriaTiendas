@@ -72,7 +72,7 @@ export default function Home() {
 
       {/* Cards */}
       <div className="relative z-20 max-w-5xl mx-auto px-4 -mt-8 pb-12 w-full">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <a
             href="/auditor"
             className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-all hover:-translate-y-0.5 group"
@@ -106,6 +106,24 @@ export default function Home() {
             </p>
             <span className="text-xs font-semibold text-amber-700 group-hover:text-amber-800">
               Ver reportes →
+            </span>
+          </a>
+
+          <a
+            href="/dashboard"
+            className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-all hover:-translate-y-0.5 group"
+          >
+            <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-2xl mb-4 group-hover:bg-green-100 transition-colors">
+              📊
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 mb-1">
+              Dashboard
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Métricas de avance y cumplimiento de la auditoría.
+            </p>
+            <span className="text-xs font-semibold text-green-700 group-hover:text-green-800">
+              Ver métricas →
             </span>
           </a>
 
