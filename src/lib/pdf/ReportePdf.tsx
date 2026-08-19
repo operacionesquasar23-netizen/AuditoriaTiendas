@@ -8,6 +8,7 @@ import {
   Font,
 } from "@react-pdf/renderer";
 import type { DatosReporteTienda, ElementoReporte } from "@/lib/utils/reporte";
+import type { ElementoExtra } from "@/lib/utils/auditor";
 
 // Evita que react-pdf parta palabras a la mitad con guión al ajustar líneas.
 Font.registerHyphenationCallback((word) => [word]);
@@ -22,6 +23,8 @@ const ROJO = "#DC2626";
 const ROJO_FONDO = "#FEE2E2";
 const AMBAR = "#D97706";
 const AMBAR_FONDO = "#FEF3C7";
+const AZUL = "#2563EB";
+const AZUL_FONDO = "#DBEAFE";
 
 function colorEstado(estado: string): [string, string] {
   if (estado === "Instalado-OK") return [VERDE, VERDE_FONDO];
@@ -142,6 +145,9 @@ function Portada({ datos }: { datos: DatosReporteTienda }) {
   for (const e of datos.elementos) {
     conteoClasif[e.clasificacion] = (conteoClasif[e.clasificacion] || 0) + 1;
   }
+  if (datos.elementosExtra.length > 0) {
+    conteoClasif["No listados"] = datos.elementosExtra.length;
+  }
   const total = datos.totalElementos || 1;
 
   return (
@@ -165,7 +171,12 @@ function Portada({ datos }: { datos: DatosReporteTienda }) {
       </View>
       <View style={styles.infoFila}>
         <Text style={styles.infoLabel}>Total de elementos auditados</Text>
-        <Text style={styles.infoValor}>{datos.totalElementos}</Text>
+        <Text style={styles.infoValor}>
+          {datos.totalElementos}
+          {datos.elementosExtra.length > 0
+            ? ` (+ ${datos.elementosExtra.length} no listados)`
+            : ""}
+        </Text>
       </View>
 
       <Text style={styles.seccionTitulo}>Resultado de la auditoría</Text>
@@ -242,6 +253,38 @@ function FichaElemento({ e }: { e: ElementoReporte }) {
   );
 }
 
+/** Ficha simplificada para elementos encontrados en tienda que no venían
+ * en el catálogo del Consolidado: solo nombre, foto y observaciones, sin
+ * badge de estado ni datos de campaña (no aplican). */
+function FichaElementoExtra({ e }: { e: ElementoExtra }) {
+  return (
+    <View style={styles.card} wrap={false}>
+      {e.foto_url ? (
+        <Image style={styles.foto} src={e.foto_url} />
+      ) : (
+        <View style={styles.fotoVacia}>
+          <Text style={styles.fotoVaciaTexto}>Sin foto</Text>
+        </View>
+      )}
+      <View style={styles.cardDerecha}>
+        <View style={styles.cardTop}>
+          <Text style={styles.cardTitulo}>{e.nombre}</Text>
+          <View style={[styles.badge, { backgroundColor: AZUL_FONDO }]}>
+            <Text style={[styles.badgeTexto, { color: AZUL }]}>No listado</Text>
+          </View>
+        </View>
+        {e.observaciones && (
+          <Text style={styles.cardObs}>&ldquo;{e.observaciones}&rdquo;</Text>
+        )}
+        <Text style={styles.cardFooter}>
+          Registrado por {e.auditor_nombre || "—"} ·{" "}
+          {new Date(e.fecha).toLocaleString("es-PE")}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 export function ReportePdf({ datos }: { datos: DatosReporteTienda }) {
   const fechaDisplay = datos.fechaReporte
     ? new Date(datos.fechaReporte).toLocaleDateString("es-PE")
@@ -285,6 +328,16 @@ export function ReportePdf({ datos }: { datos: DatosReporteTienda }) {
               ))}
             </View>
           ))}
+
+          {datos.elementosExtra.length > 0 && (
+            <View minPresenceAhead={140}>
+              <Text style={styles.claseHeader}>NO LISTADOS</Text>
+              <View style={styles.claseLinea} />
+              {datos.elementosExtra.map((e) => (
+                <FichaElementoExtra key={e.id} e={e} />
+              ))}
+            </View>
+          )}
         </View>
         <Footer />
       </Page>

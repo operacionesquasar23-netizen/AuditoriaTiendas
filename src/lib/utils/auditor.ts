@@ -268,3 +268,18 @@ export async function crearElementoExtra(datos: {
     throw new Error(`No se pudo registrar el elemento: ${error.message}`);
   }
 }
+
+export async function obtenerElementosExtraCatalogo(
+  catalogoId: string
+): Promise<ElementoExtra[]> {
+  const { data, error } = await supabase
+    .from("elementos_extra")
+    .select("*")
+    .eq("catalogo_id", catalogoId)
+    .order("fecha", { ascending: false });
+
+  if (error) {
+    throw new Error(`No se pudo obtener los elementos no listados: ${error.message}`);
+  }
+  return data as ElementoExtra[];
+}

@@ -1,6 +1,11 @@
 import * as XLSX from "xlsx";
 import { supabase } from "@/lib/supabase/client";
-import { traerTodasLasFilas } from "./auditor";
+import {
+  traerTodasLasFilas,
+  obtenerElementosExtra,
+  obtenerElementosExtraCatalogo,
+  type ElementoExtra,
+} from "./auditor";
 import { nombreElemento } from "./formatoElemento";
 import type { Auditoria, Catalogo, ElementoCatalogo } from "@/lib/supabase/types";
 
@@ -44,6 +49,28 @@ function construirFila(
     Foto: auditoria?.foto_url ?? "",
     "Foto 2": auditoria?.foto_url_2 ?? "",
     "Foto 3": auditoria?.foto_url_3 ?? "",
+  };
+}
+
+/** Elementos no listados: misma forma de fila, con columnas que no
+ * aplican dejadas en blanco (no tienen cliente, marca, hook, etc.). */
+function construirFilaExtra(extra: ElementoExtra): FilaExport {
+  return {
+    Tienda: extra.tienda,
+    Clasificación: "No listado",
+    "Tipo de Elemento": extra.nombre,
+    "Cod Campaña": "",
+    Cliente: "",
+    Marca: "",
+    Categoría: "",
+    "Estado Actual": "No listado (elemento extra)",
+    "Estado Hook": "",
+    Observaciones: extra.observaciones ?? "",
+    Auditor: extra.auditor_nombre ?? "",
+    Fecha: new Date(extra.fecha).toLocaleString("es-PE"),
+    Foto: extra.foto_url ?? "",
+    "Foto 2": "",
+    "Foto 3": "",
   };
 }
 
@@ -93,7 +120,8 @@ function descargarExcel(filas: FilaExport[], nombreArchivo: string) {
   XLSX.writeFile(libro, nombreArchivo);
 }
 
-/** Trae elementos + su última auditoría (o null) para un catálogo, opcionalmente filtrado por tienda. */
+/** Trae elementos + su última auditoría (o null) para un catálogo, opcionalmente filtrado por tienda,
+ * más los elementos no listados correspondientes. */
 async function obtenerFilasParaExportar(
   catalogoId: string,
   tienda?: string
@@ -127,9 +155,15 @@ async function obtenerFilasParaExportar(
     }
   }
 
-  return elementos.map((el) =>
+  const filas = elementos.map((el) =>
     construirFila(el, ultimaPorElemento.get(el.id) ?? null)
   );
+
+  const elementosExtra = tienda
+    ? await obtenerElementosExtra(catalogoId, tienda)
+    : await obtenerElementosExtraCatalogo(catalogoId);
+
+  return [...filas, ...elementosExtra.map(construirFilaExtra)];
 }
 
 /** Exporta el Excel de una sola tienda (lo usa el auditor al terminar). */

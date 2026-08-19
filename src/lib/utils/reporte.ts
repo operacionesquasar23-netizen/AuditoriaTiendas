@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase/client";
-import { traerTodasLasFilas } from "./auditor";
+import { traerTodasLasFilas, obtenerElementosExtra, type ElementoExtra } from "./auditor";
 import { nombreElemento } from "./formatoElemento";
 import type { Auditoria, Catalogo, ElementoCatalogo } from "@/lib/supabase/types";
 
@@ -26,12 +26,34 @@ export interface DatosReporteTienda {
   fechaReporte: string;
   totalElementos: number;
   elementos: ElementoReporte[];
+  elementosExtra: ElementoExtra[];
+}
+
+function construirFila(
+  elemento: ElementoCatalogo,
+  auditoria: Auditoria | null
+): ElementoReporte {
+  return {
+    clasificacion: elemento.clasificacion || "Otros",
+    tipo: nombreElemento(elemento),
+    cod_campana: elemento.cod_campana || "",
+    cliente: elemento.cliente || "",
+    marca: elemento.marca || "",
+    categoria: elemento.categoria || "",
+    estado_actual: auditoria?.estado_actual ?? "Pendiente",
+    estado_hook: auditoria?.estado_hook ?? "",
+    observaciones: auditoria?.observaciones || "",
+    foto_url: auditoria?.foto_url ?? null,
+    auditor_nombre: auditoria?.auditor_nombre || "",
+    fecha_auditoria: auditoria?.fecha_auditoria || "",
+  };
 }
 
 /**
  * Trae los elementos YA AUDITADOS de una tienda (los pendientes no entran
  * al reporte), listos para armar el PDF: foto real subida por el auditor,
- * respuestas del checklist y observaciones.
+ * respuestas del checklist y observaciones. También trae los elementos
+ * no listados (encontrados en tienda pero fuera del catálogo original).
  */
 export async function obtenerDatosReporteTienda(
   catalogoId: string,
@@ -79,20 +101,15 @@ export async function obtenerDatosReporteTienda(
       fechaMasReciente = auditoria.fecha_auditoria;
     }
 
-    elementosReporte.push({
-      clasificacion: elemento.clasificacion || "Otros",
-      tipo: nombreElemento(elemento),
-      cod_campana: elemento.cod_campana || "",
-      cliente: elemento.cliente || "",
-      marca: elemento.marca || "",
-      categoria: elemento.categoria || "",
-      estado_actual: auditoria.estado_actual,
-      estado_hook: auditoria.estado_hook,
-      observaciones: auditoria.observaciones || "",
-      foto_url: auditoria.foto_url,
-      auditor_nombre: auditoria.auditor_nombre || "",
-      fecha_auditoria: auditoria.fecha_auditoria,
-    });
+    elementosReporte.push(construirFila(elemento, auditoria));
+  }
+
+  const elementosExtra = await obtenerElementosExtra(catalogoId, tienda);
+  for (const extra of elementosExtra) {
+    if (extra.auditor_nombre) auditoresSet.add(extra.auditor_nombre);
+    if (extra.fecha > fechaMasReciente) {
+      fechaMasReciente = extra.fecha;
+    }
   }
 
   return {
@@ -103,6 +120,7 @@ export async function obtenerDatosReporteTienda(
     fechaReporte: fechaMasReciente,
     totalElementos: elementosReporte.length,
     elementos: elementosReporte,
+    elementosExtra,
   };
 }
 
